@@ -1,0 +1,57 @@
+---
+- name: Setup Nexus Server
+  hosts: vms
+  become: true
+  
+  vars:
+    nexus_version: "3.57.0-01"
+  tasks:
+    - name: Install Java Development Kit (JDK)
+      apt:
+        name: openjdk-8-jdk
+        state: present
+
+    - name: Download Nexus Repository Manager
+      get_url:
+        url: "https://download.sonatype.com/nexus/3/nexus-3.57.0-01-unix.tar.gz"
+        dest: /tmp/nexus.tar.gz
+
+    - name: Extract Nexus Repository Manager
+      unarchive:
+        src: /tmp/nexus.tar.gz
+        dest: /opt/
+        remote_src: yes
+
+    - name: Create Nexus user
+      user:
+        name: nexus
+        state: present
+        system: true
+        shell: /bin/false
+
+    - name: Change ownership of Nexus installation directory
+      file:
+        path: /opt/nexus-3.57.0-01/
+        owner: nexus
+        group: nexus
+        state: directory
+        recurse: yes
+
+    - name: Change ownership of sonatype
+      file:
+        path: /opt/sonatype-work/
+        owner: nexus
+        group: nexus
+        state: directory
+        recurse: yes
+      
+    - name: Configure Nexus as a service
+      template:
+        src: nexus.service.j2
+        dest: /etc/systemd/system/nexus.service
+
+    - name: Start Nexus service
+      systemd:
+        name: nexus
+        state: started
+        enabled: yes
